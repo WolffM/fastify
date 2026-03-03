@@ -3277,6 +3277,28 @@ test('onTimeout should be triggered and socket _meta is set', async t => {
   }
 })
 
+test('onTimeout: socket._meta is cleared after response to prevent memory leak', async t => {
+  t.plan(3)
+  const fastify = Fastify()
+  t.after(() => { fastify.close() })
+
+  let capturedSocket
+
+  fastify.addHook('onTimeout', function (req, res, done) {
+    done()
+  })
+
+  fastify.get('/', async (req, reply) => {
+    capturedSocket = req.raw.socket
+    return { hello: 'world' }
+  })
+
+  const res = await fastify.inject({ method: 'GET', url: '/' })
+  t.assert.strictEqual(res.statusCode, 200)
+  t.assert.strictEqual(capturedSocket._meta.request, null)
+  t.assert.strictEqual(capturedSocket._meta.reply, null)
+})
+
 test('registering invalid hooks should throw an error', async t => {
   t.plan(3)
 
